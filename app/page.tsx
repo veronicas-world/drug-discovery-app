@@ -19,6 +19,14 @@ const EVIDENCE_COLORS: Record<string, string> = {
 
 const EVIDENCE_LEVELS = ['high', 'medium', 'low']
 
+const headerStyle: React.CSSProperties = {
+  fontSize: 11,
+  letterSpacing: '0.08em',
+  color: '#aaa',
+  textTransform: 'uppercase',
+  flexShrink: 0,
+}
+
 export default function HomePage() {
   const [allRows, setAllRows]         = useState<Candidate[]>([])
   const [search, setSearch]           = useState('')
@@ -91,8 +99,24 @@ export default function HomePage() {
 
       {!loading && !error && (
         <>
+          {/* Header row */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '0 0 10px',
+            borderBottom: '1px solid #e8e8e8',
+            gap: 12,
+          }}>
+            <span style={{ ...headerStyle, flex: '1 1 160px' }}>drug / indication</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+              <span style={{ ...headerStyle, minWidth: 110, textAlign: 'right' }}>confidence level</span>
+              <span style={{ ...headerStyle, minWidth: 28, textAlign: 'right' }}>score</span>
+            </div>
+          </div>
+
           {filtered.length === 0 ? (
-            <p style={{ color: '#999', fontSize: 14 }}>no results</p>
+            <p style={{ color: '#999', fontSize: 14, marginTop: 16 }}>no results</p>
           ) : (
             <div>
               {filtered.map((row, i) => (
@@ -113,12 +137,12 @@ export default function HomePage() {
                     {/* Left: drug + indication stacked */}
                     <div style={{ flex: '1 1 160px', minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{row.drug_name}</div>
-                      <div style={{ fontSize: 13, color: '#666', whiteSpace: 'normal' }}>{row.proposed_indication || '—'}</div>
+                      <div style={{ fontSize: 13, color: '#666' }}>{row.proposed_indication || '—'}</div>
                     </div>
 
                     {/* Right: evidence dot + label + score */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 110, justifyContent: 'flex-end' }}>
                         <span style={{
                           width: 10, height: 10,
                           borderRadius: '50%',
@@ -126,7 +150,7 @@ export default function HomePage() {
                           display: 'inline-block',
                           flexShrink: 0,
                         }} />
-                        <span style={{ fontSize: 12, color: '#666', minWidth: 44 }}>{row.evidence_level || '—'}</span>
+                        <span style={{ fontSize: 12, color: '#666' }}>{row.evidence_level || '—'}</span>
                       </div>
                       <span style={{ fontSize: 14, fontWeight: 500, color: '#333', minWidth: 28, textAlign: 'right' }}>
                         {row.plausibility_score != null ? row.plausibility_score : '—'}
