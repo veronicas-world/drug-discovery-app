@@ -27,6 +27,30 @@ const headerStyle: React.CSSProperties = {
   flexShrink: 0,
 }
 
+const labelStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+  fontSize: 11,
+  letterSpacing: '0.08em',
+  color: '#888',
+  textTransform: 'uppercase',
+  flex: '1 1 160px',
+  minWidth: 0,
+}
+
+const fieldStyle: React.CSSProperties = {
+  border: 'none',
+  borderBottom: '1px solid #ccc',
+  outline: 'none',
+  padding: '6px 0',
+  fontSize: 14,
+  width: '100%',
+  boxSizing: 'border-box',
+  background: 'transparent',
+  textAlign: 'left',
+}
+
 export default function HomePage() {
   const [allRows, setAllRows]         = useState<Candidate[]>([])
   const [search, setSearch]           = useState('')
@@ -70,24 +94,24 @@ export default function HomePage() {
         </p>
       </div>
 
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, letterSpacing: '0.08em', color: '#888', textTransform: 'uppercase' }}>
+      {/* Filters — stack on mobile, row on wider screens */}
+      <div style={{ display: 'flex', gap: 20, marginBottom: 32, flexWrap: 'wrap' }}>
+        <label style={labelStyle}>
           search
           <input
             type="text"
             placeholder="drug name or indication..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none', padding: '6px 0', width: '220px', fontSize: 14 }}
+            style={fieldStyle}
           />
         </label>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, letterSpacing: '0.08em', color: '#888', textTransform: 'uppercase' }}>
+        <label style={labelStyle}>
           confidence level
           <select
             value={evidenceFilter}
             onChange={e => setEvidence(e.target.value)}
-            style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none', padding: '6px 0', cursor: 'pointer', fontSize: 14, color: evidenceFilter === 'all' ? '#888' : '#1a1a1a', background: 'transparent' }}
+            style={{ ...fieldStyle, cursor: 'pointer', color: evidenceFilter === 'all' ? '#888' : '#1a1a1a' }}
           >
             <option value="all">all</option>
             {EVIDENCE_LEVELS.map(level => (
