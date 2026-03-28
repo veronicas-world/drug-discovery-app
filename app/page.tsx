@@ -18,6 +18,7 @@ const EVIDENCE_COLORS: Record<string, string> = {
 }
 
 const NEGLECT_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  active_research:        { label: 'active research',        color: '#2d6a4f', bg: '#eaf4ee' },
   commercially_neglected: { label: 'commercially neglected', color: '#7c4a1e', bg: '#fdf3e7' },
   side_effect_abandoned:  { label: 'side effect abandoned',  color: '#5a1e7c', bg: '#f5eafd' },
   era_limited:            { label: 'era limited',            color: '#1e4a7c', bg: '#e7f0fd' },
@@ -168,7 +169,7 @@ export default function HomePage() {
           ) : (
             <div>
               {filtered.map((row, i) => {
-                const neglect = row.neglect_reason && row.neglect_reason !== 'active_research'
+                const neglect = row.neglect_reason
                   ? NEGLECT_LABELS[row.neglect_reason]
                   : null
                 return (
