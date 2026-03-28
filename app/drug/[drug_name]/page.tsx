@@ -1,5 +1,4 @@
 'use client'
-
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
@@ -10,9 +9,11 @@ type Hypothesis = {
   mechanism_rationale:    string
   plausibility_score:     number | null
   evidence_level:         string
-  top_pubmed_titles:      string | null  // pipe-separated titles
+  top_pubmed_titles:      string | null
   pubmed_hit_count:       number | null
   clinicaltrials_hit_count: number | null
+  neglect_reason:         string | null
+  neglect_notes:          string | null
 }
 
 const EVIDENCE_COLORS: Record<string, string> = {
@@ -21,19 +22,23 @@ const EVIDENCE_COLORS: Record<string, string> = {
   low:    '#a04040',
 }
 
-/** Splits a pipe-separated string into a trimmed array, dropping empties. */
+const NEGLECT_LABELS: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  commercially_neglected: { label: 'Commercially Neglected', color: '#7c4a1e', bg: '#fdf3e7', border: '#f0c896' },
+  side_effect_abandoned:  { label: 'Side Effect Abandoned',  color: '#5a1e7c', bg: '#f5eafd', border: '#d4a8f0' },
+  era_limited:            { label: 'Era Limited',            color: '#1e4a7c', bg: '#e7f0fd', border: '#96b8f0' },
+}
+
 function splitPipe(s: string | null): string[] {
   if (!s) return []
   return s.split('|').map(x => x.trim()).filter(Boolean)
 }
 
 export default function DrugPage() {
-  const params   = useParams()
+  const params = useParams()
   const drugName = decodeURIComponent(params.drug_name as string)
-
   const [hypotheses, setHypotheses] = useState<Hypothesis[]>([])
-  const [loading, setLoading]       = useState(true)
-  const [error, setError]           = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchHypotheses() {
@@ -47,10 +52,11 @@ export default function DrugPage() {
           'top_pubmed_titles',
           'pubmed_hit_count',
           'clinicaltrials_hit_count',
+          'neglect_reason',
+          'neglect_notes',
         ].join(', '))
         .eq('drug_name', drugName)
         .order('plausibility_score', { ascending: false, nullsFirst: false })
-
       if (error) { setError(error.message); setLoading(false); return }
       setHypotheses((data as unknown as Hypothesis[]) ?? [])
       setLoading(false)
@@ -60,32 +66,26 @@ export default function DrugPage() {
 
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 24px', fontFamily: 'system-ui, sans-serif' }}>
-
-      {/* ── Back link ── */}
       <Link href="/" style={{ fontSize: 13, color: '#888', textDecoration: 'none', display: 'inline-block', marginBottom: 32 }}>
         ← all drugs
       </Link>
-
-      {/* ── Header ── */}
       <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 4 }}>{drugName}</h1>
       <p style={{ fontSize: 13, color: '#999', marginBottom: 40 }}>
         {loading ? 'loading...' : `${hypotheses.length} hypothesis${hypotheses.length !== 1 ? 'es' : ''}`}
       </p>
-
       {error && <p style={{ color: '#c00', fontSize: 14 }}>error: {error}</p>}
-
       {!loading && !error && hypotheses.length === 0 && (
         <p style={{ color: '#999', fontSize: 14 }}>no hypotheses found.</p>
       )}
-
       {!loading && !error && hypotheses.map((h, i) => {
         const titles = splitPipe(h.top_pubmed_titles)
-
+        const neglect = h.neglect_reason && h.neglect_reason !== 'active_research'
+          ? NEGLECT_LABELS[h.neglect_reason]
+          : null
         return (
           <div key={i} style={{ marginBottom: 40 }}>
-
             {/* Indication + evidence dot */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: neglect ? 12 : 10 }}>
               <span style={{
                 width: 14, height: 14,
                 borderRadius: '50%',
@@ -98,6 +98,33 @@ export default function DrugPage() {
               </h2>
             </div>
 
+            {/* Neglect banner */}
+            {neglect && (
+              <div style={{
+                borderLeft: `3px solid ${neglect.border}`,
+                background: neglect.bg,
+                borderRadius: '0 6px 6px 0',
+                padding: '10px 14px',
+                marginBottom: 14,
+              }}>
+                <div style={{
+                  fontSize: 10,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  fontWeight: 700,
+                  color: neglect.color,
+                  marginBottom: 4,
+                }}>
+                  {neglect.label}
+                </div>
+                {h.neglect_notes && (
+                  <p style={{ fontSize: 13, color: '#444', lineHeight: 1.6, margin: 0 }}>
+                    {h.neglect_notes}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Mechanism rationale */}
             {h.mechanism_rationale && (
               <p style={{ fontSize: 14, color: '#444', lineHeight: 1.6, marginBottom: 14 }}>
@@ -106,7 +133,7 @@ export default function DrugPage() {
             )}
 
             {/* Meta row */}
-            <div style={{ display: 'flex', gap: 24, fontSize: 13, color: '#888', marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 24, fontSize: 13, color: '#888', marginBottom: 16, flexWrap: 'wrap' }}>
               <span>
                 plausibility:{' '}
                 <strong style={{ color: '#333' }}>
@@ -127,7 +154,7 @@ export default function DrugPage() {
               )}
             </div>
 
-            {/* PubMed article titles as search links */}
+            {/* PubMed titles */}
             {titles.length > 0 && (
               <div style={{ marginTop: 8 }}>
                 <p style={{ fontSize: 12, letterSpacing: '0.06em', color: '#aaa', textTransform: 'uppercase', marginBottom: 8 }}>
@@ -150,15 +177,12 @@ export default function DrugPage() {
               </div>
             )}
 
-            {/* Divider */}
             {i < hypotheses.length - 1 && (
               <hr style={{ border: 'none', borderTop: '1px solid #f0f0f0', marginTop: 32 }} />
             )}
-
           </div>
         )
       })}
-
     </main>
   )
 }
