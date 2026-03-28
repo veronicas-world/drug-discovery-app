@@ -1,5 +1,4 @@
 'use client'
-
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -9,6 +8,7 @@ type Candidate = {
   proposed_indication: string
   evidence_level: string
   plausibility_score: number | null
+  neglect_reason: string | null
 }
 
 const EVIDENCE_COLORS: Record<string, string> = {
@@ -17,7 +17,14 @@ const EVIDENCE_COLORS: Record<string, string> = {
   low:    '#a04040',
 }
 
+const NEGLECT_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  commercially_neglected: { label: 'commercially neglected', color: '#7c4a1e', bg: '#fdf3e7' },
+  side_effect_abandoned:  { label: 'side effect abandoned',  color: '#5a1e7c', bg: '#f5eafd' },
+  era_limited:            { label: 'era limited',            color: '#1e4a7c', bg: '#e7f0fd' },
+}
+
 const EVIDENCE_LEVELS = ['high', 'medium', 'low']
+const NEGLECT_REASONS = ['commercially_neglected', 'side_effect_abandoned', 'era_limited']
 
 const headerStyle: React.CSSProperties = {
   fontSize: 11,
@@ -26,7 +33,6 @@ const headerStyle: React.CSSProperties = {
   textTransform: 'uppercase',
   flexShrink: 0,
 }
-
 const labelStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
@@ -38,7 +44,6 @@ const labelStyle: React.CSSProperties = {
   flex: '1 1 160px',
   minWidth: 0,
 }
-
 const fieldStyle: React.CSSProperties = {
   border: 'none',
   borderBottom: '1px solid #ccc',
@@ -52,17 +57,18 @@ const fieldStyle: React.CSSProperties = {
 }
 
 export default function HomePage() {
-  const [allRows, setAllRows]         = useState<Candidate[]>([])
-  const [search, setSearch]           = useState('')
+  const [allRows, setAllRows] = useState<Candidate[]>([])
+  const [search, setSearch] = useState('')
   const [evidenceFilter, setEvidence] = useState('all')
-  const [loading, setLoading]         = useState(true)
-  const [error, setError]             = useState<string | null>(null)
+  const [neglectFilter, setNeglect] = useState('all')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchAll() {
       const { data, error } = await supabase
         .from('candidates')
-        .select('drug_name, proposed_indication, evidence_level, plausibility_score')
+        .select('drug_name, proposed_indication, evidence_level, plausibility_score, neglect_reason')
         .order('drug_name')
       if (error) { setError(error.message); setLoading(false); return }
       setAllRows(data ?? [])
@@ -77,24 +83,26 @@ export default function HomePage() {
       || row.drug_name?.toLowerCase().includes(q)
       || row.proposed_indication?.toLowerCase().includes(q)
     const matchesEvidence = evidenceFilter === 'all' || row.evidence_level === evidenceFilter
-    return matchesSearch && matchesEvidence
+    const matchesNeglect = neglectFilter === 'all'
+      || (neglectFilter === 'neglected' && row.neglect_reason && row.neglect_reason !== 'active_research')
+      || row.neglect_reason === neglectFilter
+    return matchesSearch && matchesEvidence && matchesNeglect
   })
 
   return (
     <main style={{ maxWidth: 860, margin: '0 auto', padding: '40px 20px', fontFamily: 'system-ui, sans-serif' }}>
-
       {/* Hero */}
       <div style={{ marginBottom: 40 }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 8, lineHeight: 1.3 }}>
-          Veronica&apos;s Drug Repurposing<br />Discovery Engine
+          Veronica’s Drug Repurposing<br />Discovery Engine
         </h1>
         <p style={{ color: '#666', fontSize: 14, lineHeight: 1.6 }}>
-          Computational hypotheses for drug repurposing &mdash;<br />
+          Computational hypotheses for drug repurposing —<br />
           powered by SIDER, PubMed, and Claude.
         </p>
       </div>
 
-      {/* Filters — stack on mobile, row on wider screens */}
+      {/* Filters */}
       <div style={{ display: 'flex', gap: 20, marginBottom: 32, flexWrap: 'wrap' }}>
         <label style={labelStyle}>
           search
@@ -119,11 +127,25 @@ export default function HomePage() {
             ))}
           </select>
         </label>
+        <label style={labelStyle}>
+          research status
+          <select
+            value={neglectFilter}
+            onChange={e => setNeglect(e.target.value)}
+            style={{ ...fieldStyle, cursor: 'pointer', color: neglectFilter === 'all' ? '#888' : '#1a1a1a' }}
+          >
+            <option value="all">all</option>
+            <option value="active_research">active research</option>
+            <option value="neglected">all neglected</option>
+            {NEGLECT_REASONS.map(r => (
+              <option key={r} value={r}>{NEGLECT_LABELS[r].label}</option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {loading && <p style={{ color: '#999', fontSize: 14 }}>loading...</p>}
-      {error   && <p style={{ color: '#c00', fontSize: 14 }}>error: {error}</p>}
-
+      {error && <p style={{ color: '#c00', fontSize: 14 }}>error: {error}</p>}
       {!loading && !error && (
         <>
           {/* Header row */}
@@ -141,54 +163,73 @@ export default function HomePage() {
               <span style={{ ...headerStyle, minWidth: 28, textAlign: 'right' }}>score</span>
             </div>
           </div>
-
           {filtered.length === 0 ? (
             <p style={{ color: '#999', fontSize: 14, marginTop: 16 }}>no results</p>
           ) : (
             <div>
-              {filtered.map((row, i) => (
-                <Link
-                  key={i}
-                  href={`/drug/${encodeURIComponent(row.drug_name)}`}
-                  style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
-                >
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '14px 0',
-                    borderBottom: '1px solid #f0f0f0',
-                    gap: 12,
-                    flexWrap: 'wrap',
-                  }}>
-                    <div style={{ flex: '1 1 160px', minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{row.drug_name}</div>
-                      <div style={{ fontSize: 13, color: '#666' }}>{row.proposed_indication || '—'}</div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 110, justifyContent: 'flex-end' }}>
-                        <span style={{
-                          width: 10, height: 10,
-                          borderRadius: '50%',
-                          background: EVIDENCE_COLORS[row.evidence_level] ?? '#ccc',
-                          display: 'inline-block',
-                          flexShrink: 0,
-                        }} />
-                        <span style={{ fontSize: 12, color: '#666' }}>{row.evidence_level || '—'}</span>
+              {filtered.map((row, i) => {
+                const neglect = row.neglect_reason && row.neglect_reason !== 'active_research'
+                  ? NEGLECT_LABELS[row.neglect_reason]
+                  : null
+                return (
+                  <Link
+                    key={i}
+                    href={`/drug/${encodeURIComponent(row.drug_name)}`}
+                    style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '14px 0',
+                      borderBottom: '1px solid #f0f0f0',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                    }}>
+                      <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{row.drug_name}</div>
+                        <div style={{ fontSize: 13, color: '#666', marginBottom: neglect ? 4 : 0 }}>{row.proposed_indication || '—'}</div>
+                        {neglect && (
+                          <span style={{
+                            display: 'inline-block',
+                            fontSize: 10,
+                            letterSpacing: '0.06em',
+                            textTransform: 'uppercase',
+                            fontWeight: 600,
+                            color: neglect.color,
+                            background: neglect.bg,
+                            borderRadius: 3,
+                            padding: '2px 6px',
+                            marginTop: 2,
+                          }}>
+                            {neglect.label}
+                          </span>
+                        )}
                       </div>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: '#333', minWidth: 28, textAlign: 'right' }}>
-                        {row.plausibility_score != null ? row.plausibility_score : '—'}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 110, justifyContent: 'flex-end' }}>
+                          <span style={{
+                            width: 10, height: 10,
+                            borderRadius: '50%',
+                            background: EVIDENCE_COLORS[row.evidence_level] ?? '#ccc',
+                            display: 'inline-block',
+                            flexShrink: 0,
+                          }} />
+                          <span style={{ fontSize: 12, color: '#666' }}>{row.evidence_level || '—'}</span>
+                        </div>
+                        <span style={{ fontSize: 14, fontWeight: 500, color: '#333', minWidth: 28, textAlign: 'right' }}>
+                          {row.plausibility_score != null ? row.plausibility_score : '—'}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                )
+              })}
             </div>
           )}
           <p style={{ marginTop: 16, fontSize: 12, color: '#bbb' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</p>
         </>
       )}
-
     </main>
   )
 }
