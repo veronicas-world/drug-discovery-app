@@ -48,7 +48,10 @@ export default function HomePage() {
   }, [])
 
   const filtered = allRows.filter(row => {
-    const matchesSearch   = !search || row.drug_name?.toLowerCase().includes(search.toLowerCase())
+    const q = search.toLowerCase()
+    const matchesSearch = !search
+      || row.drug_name?.toLowerCase().includes(q)
+      || row.proposed_indication?.toLowerCase().includes(q)
     const matchesEvidence = evidenceFilter === 'all' || row.evidence_level === evidenceFilter
     return matchesSearch && matchesEvidence
   })
@@ -70,17 +73,17 @@ export default function HomePage() {
       {/* Filters */}
       <div style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, letterSpacing: '0.08em', color: '#888', textTransform: 'uppercase' }}>
-          drug name
+          search
           <input
             type="text"
-            placeholder="e.g. metformin"
+            placeholder="drug name or indication..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none', padding: '6px 0', width: '200px', fontSize: 14 }}
+            style={{ border: 'none', borderBottom: '1px solid #ccc', outline: 'none', padding: '6px 0', width: '220px', fontSize: 14 }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, letterSpacing: '0.08em', color: '#888', textTransform: 'uppercase' }}>
-          evidence level
+          confidence level
           <select
             value={evidenceFilter}
             onChange={e => setEvidence(e.target.value)}
@@ -134,13 +137,10 @@ export default function HomePage() {
                     gap: 12,
                     flexWrap: 'wrap',
                   }}>
-                    {/* Left: drug + indication stacked */}
                     <div style={{ flex: '1 1 160px', minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{row.drug_name}</div>
                       <div style={{ fontSize: 13, color: '#666' }}>{row.proposed_indication || '—'}</div>
                     </div>
-
-                    {/* Right: evidence dot + label + score */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 110, justifyContent: 'flex-end' }}>
                         <span style={{
