@@ -64,7 +64,7 @@ export default function DrugPage() {
         .order('plausibility_score', { ascending: false, nullsFirst: false })
 
       if (error) { setError(error.message); setLoading(false); return }
-      setHypotheses(data ?? [])
+      setHypotheses((data as unknown as Hypothesis[]) ?? [])
       setLoading(false)
     }
     fetchHypotheses()
